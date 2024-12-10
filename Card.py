@@ -3,20 +3,22 @@ import sys
 import random
 
 class Card:
-    def __init__(self, name, strength, row, ability=None, image_path=None):
+    def __init__(self, name, strength, row, ability=None, deck_type="faction", image_path=None):
         """
-        Initialize a card with its properties.
+        Base class for all cards.
 
         :param name: The name of the card (string).
-        :param strength: The strength value of the card (integer).
-        :param row: The row type ('close', 'ranged', or 'siege').
-        :param ability: The special ability of the card, if any (string).
+        :param strength: The strength value of the card (integer or None for special cards).
+        :param row: The row type ('close', 'ranged', 'siege', 'agile', or None for special cards).
+        :param ability: The special ability of the card (string).
+        :param deck_type: The deck type ('faction', 'neutral', 'special', 'weather').
         :param image_path: Path to the card's image (string).
         """
         self.name = name
         self.strength = strength
-        self.row = row  # 'close', 'ranged', or 'siege'
+        self.row = row
         self.ability = ability
+        self.deck_type = deck_type
         self.image_path = image_path
         self.image = None
 
@@ -34,20 +36,86 @@ class Card:
         :param y: The y-coordinate of the card's position.
         """
         if self.image:
-            # Draw the card's image
-            screen.blit(self.image, (x, y))
+            screen.blit(self.image, (x, y))  # Draw the card image
         else:
-            # Fallback: Draw a blank card with text
-            pygame.draw.rect(screen, (255, 255, 255), (x, y, 120, 180))  # Card background
+            pygame.draw.rect(screen, (255, 255, 255), (x, y, 120, 180))  # Placeholder rectangle
             font = pygame.font.Font(None, 24)
             name_text = font.render(self.name, True, (0, 0, 0))
-            strength_text = font.render(f"Strength: {self.strength}", True, (0, 0, 0))
+            if self.strength is not None:
+                strength_text = font.render(f"Strength: {self.strength}", True, (0, 0, 0))
+                screen.blit(strength_text, (x + 10, y + 50))
             screen.blit(name_text, (x + 10, y + 10))
-            screen.blit(strength_text, (x + 10, y + 50))
 
+    def activate_ability(self, board, player_type, opponent_type):
+        """
+        Activate the card's ability on the board.
+        :param board: The game board (Board object).
+        :param player_type: The player who played the card ("player" or "ai").
+        :param opponent_type: The opponent ("player" or "ai").
+        """
+        if self.ability == "Spy":
+            print(f"{self.name}: Spy ability activated!")
+            board.place_card(self, opponent_type)  # Play on the opponent's side
+            return "draw_two"  # Player draws two cards
+        elif self.ability == "Scorch":
+            print(f"{self.name}: Scorch ability activated!")
+            return "scorch"  # Signal to scorch logic
+        elif self.ability == "Medic":
+            print(f"{self.name}: Medic ability activated!")
+            return "resurrect"  # Signal to resurrect logic
+        elif self.ability in ["Frost", "Fog", "Rain"]:
+            print(f"{self.name}: Weather ability activated ({self.ability})!")
+            board.apply_effect_to_all_rows("weather", player_type)
+        elif self.ability == "Horn":
+            print(f"{self.name}: Commander's Horn activated!")
+            board.apply_effect_to_all_rows("horn", player_type)
+        else:
+            print(f"{self.name}: No special ability.")
+
+
+# Specialized Card Classes
+class HeroCard(Card):
+    def __init__(self, name, strength, row, image_path=None):
+        super().__init__(name, strength, row, "Hero", "faction", image_path)
+
+
+class WeatherCard(Card):
+    def __init__(self, name, ability, image_path=None):
+        super().__init__(name, None, None, ability, "weather", image_path)
+
+
+class SpecialCard(Card):
+    def __init__(self, name, ability, image_path=None):
+        super().__init__(name, None, None, ability, "special", image_path)
+
+
+# Deck Initialization
+def create_card(data):
+    """Create a card from a dictionary of attributes."""
+    if data["type"] == "Hero":
+        return HeroCard(data["name"], data["strength"], data["row"], data["image_path"])
+    elif data["type"] == "Weather":
+        return WeatherCard(data["name"], data["ability"], data["image_path"])
+    elif data["type"] == "Special":
+        return SpecialCard(data["name"], data["ability"], data["image_path"])
+    else:
+        return Card(data["name"], data["strength"], data["row"], data["ability"], data["image_path"])
+
+
+def initialize_deck(deck_data):
+    """
+    Initialize a deck from a list of card dictionaries or pre-created Card objects.
+    :param deck_data: List of card data (dictionary or Card objects).
+    :return: List of Card objects.
+    """
+    # If items are dictionaries, convert them to Card objects
+    if isinstance(deck_data[0], dict):
+        return [create_card(card_data) for card_data in deck_data]
+    # If items are already Card objects, return as is
+    return deck_data
 
 # Northern Realms Deck
-northern_realms_deck = [
+northern_realms_data = [
     Card("Blue Stripes Commando", 4, "close", "Tight Bond", "realms_blue_stripes.jpg"),
     Card("Poor Fucking Infantry", 1, "close", "Tight Bond", "realms_poor_infantry.jpg"),
     Card("Siegfried of Denesle", 5, "close", None, "realms_siegfried.jpg"),
@@ -74,7 +142,7 @@ northern_realms_deck = [
 ]
 
 # Nilfgaardian Empire Deck
-nilfgaardian_deck = [
+nilfgaardian_data = [
     Card("Impera Brigade Guard", 3, "close", "Tight Bond", "nilfgaard_imperal_brigade.jpg"),
     Card("Nausicaa Cavalry Rider", 2, "close", "Tight Bond", "nilfgaard_nauzicaa_2.jpg"),
     Card("Black Infantry Archer", 10, "close", None, "nilfgaard_black_archer.jpg"),
@@ -100,7 +168,7 @@ nilfgaardian_deck = [
 ]
 
 # Neutral Deck
-neutral_deck = [
+neutral_data = [
     Card("Geralt of Rivia", 15, "close", "Hero", "neutral_geralt (1).jpg"),
     Card("Cirilla Fiona Elen Riannon", 15, "close", "Hero", "neutral_ciri (1).jpg"),
     Card("Yennefer of Vengerberg", 7, "ranged", "Hero Medic", "neutral_yennefer.jpg"),
@@ -114,7 +182,7 @@ neutral_deck = [
 ]
 
 # Special Cards Initialization
-special_cards = [
+special_cards_data = [
     Card("Decoy", None, None, "decoy", "special", "special_decoy.jpg"),
     Card("Biting Frost", None, None, "frost", "weather", "weather_frost.jpg"),
     Card("Impenetrable Fog", None, None, "fog", "weather", "weather_fog.jpg"),
@@ -123,3 +191,10 @@ special_cards = [
     Card("Commander’s Horn", None, None, "horn", "special", "special_horn.jpg"),
     Card("Scorch", None, None, "scorch", "special", "special_scorch.jpg"),
 ]
+
+northern_realms_deck = initialize_deck(northern_realms_data)
+nilfgaardian_deck = initialize_deck(nilfgaardian_data)
+neutral_deck = initialize_deck(neutral_data)
+special_cards = initialize_deck(special_cards_data)
+
+__all__ = ["northern_realms_deck", "nilfgaardian_deck", "neutral_deck", "special_cards"]
