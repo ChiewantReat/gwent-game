@@ -1,85 +1,113 @@
-from Card import shuffle_deck, draw_cards, northern_realms_deck, nilfgaardian_deck, neutral_deck, special_cards
-from Player import Player
-from Gui import initialize_screen, render_card
-import random
+from  card import northern_realms_deck, nilfgaardian_deck, neutral_deck, special_cards
+from deck import Deck
+from player import Player
 import pygame
 
-def combine_with_neutral_and_special(faction_deck, neutral_deck, special_deck, num_neutral_cards=5, num_special_cards=3):
-    """
-    Combine a faction deck with neutral and special cards.
 
-    :param faction_deck: The faction-specific deck.
-    :param neutral_deck: The neutral deck.
-    :param special_deck: The special deck.
-    :param num_neutral_cards: Number of neutral cards to include.
-    :param num_special_cards: Number of special cards to include.
-    :return: The combined deck.
+def initialize_screen():
     """
-    selected_neutral = random.sample(neutral_deck, min(num_neutral_cards, len(neutral_deck)))
-    selected_special = random.sample(special_deck, min(num_special_cards, len(special_deck)))
-    return faction_deck + selected_neutral + selected_special
+    Initialize the Pygame screen and window.
+    """
+    pygame.init()
+    screen = pygame.display.set_mode((1280, 720))
+    pygame.display.set_caption("Gwent: The Card Game")
+    return screen
 
-def main():
-    # Initialize the screen
+
+def main(): 
+    # Initialize GUI
     screen = initialize_screen()
     font = pygame.font.Font(None, 36)
 
-    # Choose factions
+    # Set up factions
     print("Choose your faction:")
     print("1. Northern Realms")
     print("2. Nilfgaardian Empire")
     choice = input("Enter the number of your choice: ")
+
     if choice == "1":
         player_faction = "Northern Realms"
-        player_deck = northern_realms_deck
-        opponent_faction = "Nilfgaardian Empire"
-        opponent_deck = nilfgaardian_deck
+        player_deck = Deck(
+            faction_name=player_faction,
+            faction_cards=northern_realms_deck,
+            neutral_cards=neutral_deck[:5],
+            special_cards=special_cards[:3]
+        )
+        ai_faction = "Nilfgaardian Empire"
+        ai_deck = Deck(
+            faction_name=ai_faction,
+            faction_cards=nilfgaardian_deck,
+            neutral_cards=neutral_deck[5:10],
+            special_cards=special_cards[3:6]
+        )
     elif choice == "2":
         player_faction = "Nilfgaardian Empire"
-        player_deck = nilfgaardian_deck
-        opponent_faction = "Northern Realms"
-        opponent_deck = northern_realms_deck
+        player_deck = Deck(
+            faction_name=player_faction,
+            faction_cards=nilfgaardian_deck,
+            neutral_cards=neutral_deck[:5],
+            special_cards=special_cards[:3]
+        )
+        ai_faction = "Northern Realms"
+        ai_deck = Deck(
+            faction_name=ai_faction,
+            faction_cards=northern_realms_deck,
+            neutral_cards=neutral_deck[5:10],
+            special_cards=special_cards[3:6]
+        )
     else:
         print("Invalid choice. Defaulting to Northern Realms.")
         player_faction = "Northern Realms"
-        player_deck = northern_realms_deck
-        opponent_faction = "Nilfgaardian Empire"
-        opponent_deck = nilfgaardian_deck
+        player_deck = Deck(
+            faction_name=player_faction,
+            faction_cards=northern_realms_deck,
+            neutral_cards=neutral_deck[:5],
+            special_cards=special_cards[:3]
+        )
+        ai_faction = "Nilfgaardian Empire"
+        ai_deck = Deck(
+            faction_name=ai_faction,
+            faction_cards=nilfgaardian_deck,
+            neutral_cards=neutral_deck[5:10],
+            special_cards=special_cards[3:6]
+        )
 
-    # Add neutral and special cards to both decks
-    player_deck = combine_with_neutral_and_special(player_deck, neutral_deck, special_cards, num_neutral_cards=5, num_special_cards=3)
-    opponent_deck = combine_with_neutral_and_special(opponent_deck, neutral_deck, special_cards, num_neutral_cards=5, num_special_cards=3)
+    # Initialize Player and AI
+    player = Player(name="Player", faction=player_faction, deck=player_deck)
+    ai = Player(name="AI Opponent", faction=ai_faction, deck=ai_deck)
 
-    # Shuffle decks
-    shuffle_deck(player_deck)
-    shuffle_deck(opponent_deck)
+    # Draw initial hands
+    player.draw_initial_hand()
+    ai.draw_initial_hand()
 
-    # Initialize players
-    player = Player("Player", player_deck)
-    opponent = Player("Opponent", opponent_deck)
+    # Display initial player hand
+    print("Your Hand:")
+    for card in player.hand:
+        print(f"- {card.name} ({card.strength if card.strength else 'Special'})")
 
-    # Draw 10 cards for each player
-    player.draw_hand(draw_cards, count=10)
-    opponent.draw_hand(draw_cards, count=10)
-
-    # Game loop
+    # Game loop (placeholder for now)
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Draw background
+        # Render screen
         screen.fill((0, 128, 0))  # Green background
+        y_offset = 50
 
-        # Render player's cards
+        # Render player hand
         for i, card in enumerate(player.hand):
-            render_card(screen, card, 50 + i * 140, 400, font)
+            card.render(screen, 50 + i * 140, 500)
 
-        # Render opponent's cards
-        for i, card in enumerate(opponent.hand):
-            render_card(screen, card, 50 + i * 140, 50, font)
+        # Render AI placeholder
+        for i, card in enumerate(ai.hand):
+            pygame.draw.rect(screen, (255, 0, 0), (50 + i * 140, 50, 120, 180))  # Placeholder
 
         pygame.display.flip()
 
     pygame.quit()
+
+
+if __name__ == "__main__":
+    main()
